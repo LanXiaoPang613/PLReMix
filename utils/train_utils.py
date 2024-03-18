@@ -243,15 +243,14 @@ def train_step(args, net, net2, inputs_x1, inputs_x2, inputs_x3, inputs_x4, inpu
         pred_mean = torch.softmax(logits_x, dim=1).mean(0)
         penalty = torch.sum(prior * torch.log(prior / pred_mean))
         loss_semi = Lx + lamb * Lu + penalty
-    scaler.scale(loss_semi).backward()
 
-    with autocast():
         # contrastive loss
         fx3, fx4, fu3, fu4 = torch.chunk(features[inputs_mixed.shape[0]:], 4, dim=0)
         f1, f2 = torch.cat([fx3, fu3], dim=0), torch.cat([fx4, fu4], dim=0)
         features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
         loss_crl = crl_loss(features, mask=contrastive_mask)
-    scaler.scale(args.lambda_c * loss_crl).backward()
+
+    scaler.scale(loss_semi + args.lambda_c * loss_crl).backward()
 
     return loss_semi, loss_crl
 
